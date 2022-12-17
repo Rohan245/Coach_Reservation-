@@ -1,0 +1,345 @@
+USE [CoachReservsation]
+GO
+/****** Object:  StoredProcedure [dbo].[AuthenticateUser]    Script Date: 10-12-2017 4.27.24 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[AuthenticateUser]
+    @username VARCHAR(20),
+    @password varchar(500),
+	@RoleName nvarchar(50) output,
+	@WrongLoginCount int output
+AS
+BEGIN
+
+SET NOCOUNT ON
+SELECT @WrongLoginCount = 0
+
+IF EXISTS(SELECT * FROM [CoachReservsation].[dbo].[tblUsers]
+ WHERE UPPER([userName]) = UPPER(@username) AND [userPassword] = @password and wrongLogin <3)
+ BEGIN
+    SELECT @RoleName = 'Authorised'
+	update tblUsers set wrongLogin=0 where UPPER([userName]) = UPPER(@username)
+ END
+ELSE
+begin
+	IF EXISTS(SELECT * FROM [CoachReservsation].[dbo].[tblUsers]
+	WHERE UPPER([userName]) = UPPER(@username))
+	BEGIN
+		update tblUsers set wrongLogin=wrongLogin+1 where  UPPER([userName]) = UPPER(@username)
+		SELECT @WrongLoginCount = wrongLogin from tblUsers where UPPER([userName]) = UPPER(@username)
+	END
+	SELECT @RoleName = 'Unauthorised'
+end
+return
+END
+
+
+=========================
+
+USE [CoachReservsation]
+GO
+/****** Object:  StoredProcedure [dbo].[bookSeat]    Script Date: 10-12-2017 4.27.35 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[bookSeat]
+    @userName varchar(20),
+	@busID int,
+	@seat int,
+	@passengerName varchar(30),
+	@price float,
+	@transactionDate date,
+	@journeyDate date
+
+AS
+BEGIN
+
+SET NOCOUNT ON
+
+insert into tblBooking values(@busID,(select ID from tblUsers where userName=@userName),@seat,@passengerName,@price,@journeyDate,@transactionDate)
+
+END
+
+
+
+===============================
+
+USE [CoachReservsation]
+GO
+/****** Object:  StoredProcedure [dbo].[checkSeatAlreadyBooked]    Script Date: 10-12-2017 4.27.51 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[checkSeatAlreadyBooked]
+	@busID int,
+	@seat int,
+	@journeyDate date,
+	@bookedFlag varchar(20) output
+
+AS
+BEGIN
+
+SET NOCOUNT ON
+if exists (select seat from tblBooking where BusID=@busID and JourneyDate=@journeyDate and Seat=@seat)
+select @bookedFlag='Exists'
+else
+select @bookedFlag='Valid'
+return
+END
+
+
+============
+
+USE [CoachReservsation]
+GO
+/****** Object:  StoredProcedure [dbo].[checkUserExists]    Script Date: 10-12-2017 4.28.00 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[checkUserExists]
+    @userName VARCHAR(20),
+	@phone varchar(15),
+	@emailID varchar(40),
+	@userExists varchar(20) output
+AS
+BEGIN
+
+
+SET NOCOUNT ON
+
+if EXISTS(SELECT * FROM [CoachReservsation].[dbo].[tblUsers]
+ WHERE upper([userName]) = upper(@username)) 
+ select @userExists='UserName'
+ else if EXISTS(SELECT * FROM [CoachReservsation].[dbo].[tblUsers]
+ WHERE [Mobile] = (@phone)) 
+ select @userExists='Phone'
+  else if EXISTS(SELECT * FROM [CoachReservsation].[dbo].[tblUsers]
+ WHERE [EmailID] = (@emailID)) 
+ select @userExists='EmailID'
+ else
+ select @userExists='Valid'
+END
+
+
+==================
+
+USE [CoachReservsation]
+GO
+/****** Object:  StoredProcedure [dbo].[chooseBus]    Script Date: 10-12-2017 4.28.13 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[chooseBus]
+    @source VARCHAR(20),
+	@destination VARCHAR(20),
+	@journetDate VARCHAR(20)
+AS
+BEGIN
+
+SET NOCOUNT ON
+
+Select  ROW_NUMBER() OVER(ORDER BY (SELECT 1)) AS SerialNo,  BusName as Bus, bus.ID as BusID, SourceName as Source, Destination,
+						DepartureTime, ArrivalTime, bus.PricePerSeat as [Price(€)],
+						'40 Seater' as BusType,
+						case when cast(booking.JourneyDate as date)=cast(@journetDate as date) 
+						then (40-count(booking.ID))
+						else 40 end as RemainingSeats 
+						 from tblBus as bus
+						 left join tblBooking as booking on bus.ID = booking.BusID
+						 where  upper(bus.SourceName)=upper(@source) and upper(bus.Destination)=upper(@destination) group by BusName
+						 ,bus.ID,SourceName, Destination,
+						DepartureTime, ArrivalTime, bus.PricePerSeat , booking.JourneyDate
+END
+
+
+
+==================
+
+USE [CoachReservsation]
+GO
+/****** Object:  StoredProcedure [dbo].[getBusSeats]    Script Date: 10-12-2017 4.28.27 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[getBusSeats]
+    @busID int,
+	@journetDate VARCHAR(20)
+AS
+BEGIN
+
+SET NOCOUNT ON
+		select 1 as Col1,2 as Col2,' ' as aisle,3 as Col3,4 as Col4
+		union 
+		select 5,6,' ',7,8
+		union 
+		select 9,10,' ',11,12
+		union 
+		select 13,14,' ',15,16
+		union 
+		select 17,18,' ',19,20
+		union 
+		select 21,22,' ',23,24
+		union 
+		select 25,26,' ',27,28
+		union 
+		select 29,30,' ',31,32
+		union 
+		select 33,34,' ',35,36
+		union 
+		select 37,38,' ',39,40
+	
+Select Seat AS SeatsBooked from tblBooking where BusID=@busID and cast(JourneyDate as date)=cast(@journetDate as date)
+
+END
+
+
+=====================
+
+USE [CoachReservsation]
+GO
+/****** Object:  StoredProcedure [dbo].[getHashPassword]    Script Date: 10-12-2017 4.28.40 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[getHashPassword]
+@userName varchar(20),
+@hashPassword varchar(500) output
+AS
+BEGIN
+
+SET NOCOUNT ON
+
+
+Select @hashPassword = [userPassword] from [CoachReservsation].[dbo].[tblUsers] where userName=@userName
+return
+END
+
+
+
+=====================
+
+USE [CoachReservsation]
+GO
+/****** Object:  StoredProcedure [dbo].[getLocations]    Script Date: 10-12-2017 4.28.52 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[getLocations]
+
+AS
+BEGIN
+
+SET NOCOUNT ON
+
+
+Select [ID], [location] from [CoachReservsation].[dbo].[tblLocations] order by Location
+END
+
+=================
+
+USE [CoachReservsation]
+GO
+/****** Object:  StoredProcedure [dbo].[getUpcomingSeats]    Script Date: 10-12-2017 4.29.07 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[getUpcomingSeats]
+    @username VARCHAR(20)
+AS
+BEGIN
+
+SET NOCOUNT ON
+
+
+Select ROW_NUMBER() OVER(ORDER BY (SELECT 1)) AS SerialNo, PassengerName, 
+						BusName as Bus, SourceName as Source, Destination, Seat,  CONVERT(VARCHAR(11), JourneyDate, 106) AS JourneyDate,
+						DepartureTime, Price as [Price(€)] from tblBooking as booking inner join tblBus as bus on booking.BusID = bus.ID
+						where GETDATE() < JourneyDate and booking.UserID = (Select ID from tblUsers where userName = @username)
+END
+
+
+================
+
+USE [CoachReservsation]
+GO
+/****** Object:  StoredProcedure [dbo].[InsertLog]    Script Date: 10-12-2017 4.29.28 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[InsertLog]
+    @userName varchar(20),
+	@logMessage varchar(500)
+AS
+BEGIN
+
+SET NOCOUNT ON
+
+insert into tblHistory values(@userName,@logMessage,getdate())
+
+END
+
+
+===============
+
+USE [CoachReservsation]
+GO
+/****** Object:  StoredProcedure [dbo].[RegisterUser]    Script Date: 10-12-2017 4.29.36 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[RegisterUser]
+    @userName VARCHAR(20),
+	@password VARCHAR(500),
+	@phone varchar(15),
+	@emailID varchar(40)
+	
+AS
+BEGIN
+
+
+SET NOCOUNT ON
+
+INSERT INTO tblusers values(@userName, @password, @phone, 0 , @emailID);
+
+
+END
+
+
+=================
+
+USE [CoachReservsation]
+GO
+/****** Object:  StoredProcedure [dbo].[UnlockAccount]    Script Date: 10-12-2017 4.29.57 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[UnlockAccount]
+    @username VARCHAR(20),
+    @password varchar(500),
+	@email nvarchar(50) output
+AS
+BEGIN
+
+SET NOCOUNT ON
+
+IF EXISTS(SELECT * FROM [CoachReservsation].[dbo].[tblUsers]
+ WHERE [userName] = @username )
+ BEGIN
+	update tblUsers set userPassword=@password, wrongLogin=0 where [userName] = @username
+	select @email = EmailID from tblUsers where [userName] = @username
+ END
+ return
+END

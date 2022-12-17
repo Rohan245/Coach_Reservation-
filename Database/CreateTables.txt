@@ -1,0 +1,67 @@
+--drop tables
+
+--drop table tblBooking
+--drop table tblBus
+--drop table tblBusFormat
+--drop table tblUsers
+-- creating tables
+
+-- Table 2 - tblUsers
+CREATE TABLE tblUsers (
+    ID int IDENTITY(1,1) PRIMARY KEY,
+    userID varchar(255) NOT NULL,
+	userPassowrd varchar(100) NOT NULL,
+	userRoleID int FOREIGN KEY REFERENCES tblRoles(ID),
+	Mobile varchar(40) NOT NULL,
+	IsApproved bit NOT NULL,
+	wrongLogin int,
+	EmailID varchar(40) NOT NULL
+);
+
+-- Table 3 - tblBusFormat
+CREATE TABLE tblBusFormat (
+    ID int IDENTITY(1,1) PRIMARY KEY,
+    BusFormat varchar(50) NOT NULL
+);
+
+-- Table 4 - tblBus
+CREATE TABLE tblBus (
+    ID int IDENTITY(1,1) PRIMARY KEY,
+    BusName varchar(100) NOT NULL,
+	SourceName varchar(100) NOT NULL,
+	Destination varchar(100) NOT NULL,
+	DepartureTime time(7) NOT NULL,
+	ArrivalTime time(7) NOT NULL,
+	PricePerSeat float NOT NULL,
+	BusOwnerID int FOREIGN KEY REFERENCES tblUsers(ID),
+	BusFormatID int FOREIGN KEY REFERENCES tblBusFormat(ID),
+	IsApproved bit NOT NULL
+);
+
+-- Table 5 - tblBusFormat
+CREATE TABLE tblBooking (
+    ID int IDENTITY(1,1) PRIMARY KEY,
+    BusID int FOREIGN KEY REFERENCES tblBus(ID),
+	UserID int FOREIGN KEY REFERENCES tblUsers(ID),
+	JourneyDate date NOT NULL,
+	Seat int NOT NULL,
+	PassengerName varchar(100) NOT NULL,
+	Price float NOT NULL,
+	TransactionDate datetime NOT NULL
+);
+
+-- Table 6 - tblLocations
+CREATE TABLE tblLocations (
+    ID int IDENTITY(1,1) PRIMARY KEY,
+	Location varchar(30) NOT NULL
+);
+
+
+-- Table 6 - tblLocations
+CREATE TABLE tblHistory(
+    ID int IDENTITY(1,1) PRIMARY KEY,
+	UserName varchar(20) NOT NULL,
+	LogMessage varchar(500) not null,
+	TransactionDate DateTime not null
+);
+
